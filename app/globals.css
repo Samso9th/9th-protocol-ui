@@ -1,0 +1,67 @@
+:root {
+  --bg: #0b0b0e;
+  --panel: #141419;
+  --panel2: #1c1c24;
+  --border: #26262f;
+  --text: #e8e8ea;
+  --dim: #8a8a93;
+  --accent: #8b5cf6;
+  --accent-dim: #6d43d8;
+  --warn: #eab308;
+  --err: #ef4444;
+  --ok: #22c55e;
+}
+* { box-sizing: border-box; margin: 0; }
+html, body { background: var(--bg); color: var(--text); }
+body { font: 15px/1.6 -apple-system, "Segoe UI", Roboto, sans-serif; min-height: 100vh; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code, pre, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+
+.shell { display: flex; min-height: 100vh; }
+.sidebar { width: 220px; background: var(--panel); border-right: 1px solid var(--border); padding: 20px 14px; display: flex; flex-direction: column; gap: 2px; position: sticky; top: 0; height: 100vh; }
+.sidebar .brand { color: var(--accent); font-weight: 800; font-size: 17px; margin-bottom: 16px; padding: 0 8px; }
+.sidebar a { color: var(--dim); padding: 7px 10px; border-radius: 8px; font-size: 14px; }
+.sidebar a:hover { color: var(--text); background: var(--panel2); text-decoration: none; }
+.sidebar a.active { color: var(--text); background: var(--panel2); }
+.sidebar .foot { margin-top: auto; font-size: 12px; color: var(--dim); padding: 0 8px; }
+.content { flex: 1; padding: 32px; max-width: 1000px; }
+
+h1 { font-size: 22px; margin-bottom: 4px; }
+h2 { font-size: 16px; margin: 24px 0 8px; }
+.sub { color: var(--dim); margin-bottom: 24px; }
+
+.card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 14px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.spread { justify-content: space-between; }
+
+button, .btn { background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 9px 16px; font: inherit; font-size: 14px; cursor: pointer; }
+button:hover, .btn:hover { background: var(--accent-dim); text-decoration: none; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button.secondary { background: var(--panel2); color: var(--text); border: 1px solid var(--border); }
+input, select { background: var(--panel2); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; font: inherit; font-size: 14px; width: 100%; }
+label { display: block; font-size: 13px; color: var(--dim); margin: 12px 0 4px; }
+
+.meter { height: 8px; background: var(--panel2); border-radius: 4px; overflow: hidden; margin-top: 6px; }
+.meter > div { height: 100%; background: var(--accent); border-radius: 4px; }
+.meter.hot > div { background: var(--warn); }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; color: var(--dim); font-weight: 500; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+tr:last-child td { border-bottom: 0; }
+
+.badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; background: var(--panel2); color: var(--dim); border: 1px solid var(--border); }
+.badge.accent { color: var(--accent); border-color: var(--accent); }
+.badge.ok { color: var(--ok); border-color: var(--ok); }
+.badge.warn { color: var(--warn); border-color: var(--warn); }
+
+.snippet { position: relative; background: #0f0f14; border: 1px solid var(--border); border-radius: 8px; padding: 12px; overflow-x: auto; white-space: pre; margin-top: 8px; }
+.snippet button { position: absolute; top: 8px; right: 8px; padding: 3px 10px; font-size: 12px; background: var(--panel2); color: var(--dim); border: 1px solid var(--border); }
+
+.auth-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+.auth-card { width: 380px; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 28px; }
+.auth-card h1 { color: var(--accent); }
+.error-text { color: var(--err); font-size: 13px; margin-top: 10px; }
+.notice { background: #191423; border: 1px solid var(--accent-dim); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--dim); margin-bottom: 16px; }
