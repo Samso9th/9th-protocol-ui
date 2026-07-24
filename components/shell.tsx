@@ -43,7 +43,7 @@ export function Shell({ children }: { children: (me: Me, reload: () => void) => 
     <div className="shell">
       <aside className="sidebar">
         <div className="brand">
-          <Image src="/logo.png" alt="" width={24} height={24} style={{ borderRadius: 6, verticalAlign: "-5px", marginRight: 8 }} />
+          <Image src="/logo.png" alt="" width={35} height={22} style={{ verticalAlign: "-5px", marginRight: 8 }} />
           9th Protocol
         </div>
         {NAV.map(([href, label]) => (
