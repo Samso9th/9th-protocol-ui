@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { api, clearTokens, getTokens, type Me } from "@/lib/api";
 
@@ -41,7 +42,10 @@ export function Shell({ children }: { children: (me: Me, reload: () => void) => 
   return (
     <div className="shell">
       <aside className="sidebar">
-        <div className="brand">9th Protocol</div>
+        <div className="brand">
+          <Image src="/logo.png" alt="" width={24} height={24} style={{ borderRadius: 6, verticalAlign: "-5px", marginRight: 8 }} />
+          9th Protocol
+        </div>
         {NAV.map(([href, label]) => (
           <Link key={href} href={href} className={pathname === href ? "active" : ""}>
             {label}
