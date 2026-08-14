@@ -16,6 +16,27 @@ interface Tx {
   createdAt: string;
 }
 
+interface UsageBucket {
+  key: string;
+  requests: number;
+  inputTokens: number;
+  cachedTokens: number;
+  outputTokens: number;
+  rawCostUsd: number;
+  credits: number;
+  cacheHitRate: number;
+}
+
+interface UsageReport {
+  totals: Omit<UsageBucket, "key">;
+  buckets: UsageBucket[];
+}
+
+type GroupBy = "model" | "day" | "session";
+
+const fmtTokens = (n: number): string =>
+  n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+
 function Meter({ label, spent, cap }: { label: string; spent: number; cap: number }) {
   const pct = cap > 0 ? Math.min(100, (spent / cap) * 100) : 0;
   return (
@@ -49,9 +70,17 @@ function DashboardBody({
   limits: { windowSpent: number; windowCap: number; weeklySpent: number; weeklyCap: number };
 }) {
   const [ledger, setLedger] = useState<Tx[]>([]);
+  const [groupBy, setGroupBy] = useState<GroupBy>("model");
+  const [usage, setUsage] = useState<UsageReport | null>(null);
+
   useEffect(() => {
     api<{ transactions: Tx[] }>("/billing/ledger").then((d) => setLedger(d.transactions), () => {});
   }, []);
+
+  useEffect(() => {
+    setUsage(null);
+    api<UsageReport>(`/billing/usage?groupBy=${groupBy}&days=30`).then(setUsage, () => {});
+  }, [groupBy]);
 
   return (
     <>
@@ -67,6 +96,75 @@ function DashboardBody({
         <Meter label="5-hour window" spent={limits.windowSpent} cap={limits.windowCap} />
         <Meter label="Weekly" spent={limits.weeklySpent} cap={limits.weeklyCap} />
       </div>
+      <div className="row spread" style={{ alignItems: "baseline", marginTop: 28 }}>
+        <h2 style={{ margin: 0 }}>Last 30 days</h2>
+        <div className="row" style={{ gap: 6 }}>
+          {(["model", "day", "session"] as GroupBy[]).map((g) => (
+            <button
+              key={g}
+              onClick={() => setGroupBy(g)}
+              className={`badge${groupBy === g ? " accent" : ""}`}
+              style={{ cursor: "pointer", border: "none" }}
+            >
+              by {g}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {usage && usage.totals.requests > 0 && (
+        <p className="sub" style={{ marginTop: 6 }}>
+          {usage.totals.requests} calls · {usage.totals.credits.toFixed(1)} credits · $
+          {usage.totals.rawCostUsd.toFixed(4)} raw ·{" "}
+          {(usage.totals.cacheHitRate * 100).toFixed(0)}% cached
+        </p>
+      )}
+
+      <div className="card" style={{ padding: 0 }}>
+        <table>
+          <thead>
+            <tr>
+              <th>{groupBy}</th>
+              <th>calls</th>
+              <th>tokens (in / cached / out)</th>
+              <th>cached</th>
+              <th>credits</th>
+            </tr>
+          </thead>
+          <tbody>
+            {usage?.buckets.map((b) => (
+              <tr key={b.key}>
+                <td className="mono">
+                  {/* session ids are UUIDs — a full one wrecks the column */}
+                  {groupBy === "session" && b.key.length > 12 ? `${b.key.slice(0, 8)}…` : b.key}
+                </td>
+                <td className="mono">{b.requests}</td>
+                <td className="mono">
+                  {fmtTokens(b.inputTokens)} / {fmtTokens(b.cachedTokens)} /{" "}
+                  {fmtTokens(b.outputTokens)}
+                </td>
+                <td className="mono">{(b.cacheHitRate * 100).toFixed(0)}%</td>
+                <td className="mono">{b.credits.toFixed(2)}</td>
+              </tr>
+            ))}
+            {usage && !usage.buckets.length && (
+              <tr>
+                <td colSpan={5} style={{ color: "var(--dim)" }}>
+                  nothing in the last 30 days
+                </td>
+              </tr>
+            )}
+            {!usage && (
+              <tr>
+                <td colSpan={5} style={{ color: "var(--dim)" }}>
+                  loading…
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
       <h2>Recent activity</h2>
       <div className="card" style={{ padding: 0 }}>
         <table>
