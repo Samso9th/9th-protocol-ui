@@ -12,7 +12,7 @@ export default function SkillsPage() {
           <p className="sub">
             skills are markdown playbooks in <code>.9p/skills/</code> (project) or{" "}
             <code>~/.9p/skills/</code> (global), invoked as <code>/name</code> in any session. A
-            skill&apos;s content only enters context when you invoke it — never preloaded.
+            skill&apos;s content only enters context when you invoke it. Never preloaded.
           </p>
           <div className="card">
             <strong>Skill format</strong>
@@ -25,7 +25,7 @@ export default function SkillsPage() {
           </div>
           <h2>Curated collections</h2>
           <p className="sub">
-            adapt these community collections into 9p skill files — copy the parts you need, keep
+            adapt these community collections into 9p skill files, copy the parts you need, keep
             them small
           </p>
           <div className="grid">

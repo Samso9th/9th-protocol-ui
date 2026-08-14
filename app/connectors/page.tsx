@@ -112,7 +112,7 @@ export default function Connectors() {
           <h2>Using connectors from the agent</h2>
           <div className="card">
             <p style={{ fontSize: 13, color: "var(--dim)" }}>
-              Connected tokens are fetched by your CLI at runtime — e.g. ask 9p to “open a PR for
+              Connected tokens are fetched by your CLI at runtime, e.g. ask 9p to “open a PR for
               this change” and it uses your GitHub token via:
             </p>
             <Snippet text={`GET /v1/connectors/github/token  (with your session auth)`} />

@@ -20,7 +20,7 @@ export default function Settings() {
                 </tr>
                 <tr>
                   <td style={{ color: "var(--dim)" }}>name</td>
-                  <td>{me.user.name || "—"}</td>
+                  <td>{me.user.name || "-"}</td>
                 </tr>
                 <tr>
                   <td style={{ color: "var(--dim)" }}>plan</td>

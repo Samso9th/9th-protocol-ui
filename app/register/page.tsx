@@ -44,7 +44,7 @@ export default function Register() {
     <div className="auth-wrap">
       <form className="auth-card" onSubmit={submit}>
         <h1>9th Protocol</h1>
-        <p className="sub">create your account — includes a free trial (~2–3 tasks)</p>
+        <p className="sub">create your account, includes a free trial (~2–3 tasks)</p>
         <label>name</label>
         <input value={name} onChange={(e) => setName(e.target.value)} />
         <label>email</label>

@@ -6,7 +6,7 @@ import { API_URL, saveTokens } from "@/lib/api";
 
 /**
  * OAuth landing page. The API redirects here with a one-time `code` rather than
- * tokens in the URL — JWTs in a query string leak through browser history,
+ * tokens in the URL, JWTs in a query string leak through browser history,
  * referrer headers, and server logs.
  */
 export default function AuthCallback() {

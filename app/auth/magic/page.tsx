@@ -17,7 +17,7 @@ function MagicBody() {
   const router = useRouter();
   const params = useSearchParams();
   const [error, setError] = useState<string | null>(null);
-  // Single-use token — never redeem twice (StrictMode re-runs effects in dev).
+  // Single-use token. Never redeem twice (StrictMode re-runs effects in dev).
   const redeemed = useRef(false);
 
   useEffect(() => {

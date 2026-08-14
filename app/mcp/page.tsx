@@ -11,7 +11,7 @@ export default function McpPage() {
           <h1>MCP servers</h1>
           <p className="sub">
             add a server to <code>.9p/mcp.json</code> in your project (or <code>~/.9p/mcp.json</code>{" "}
-            for all projects) — 9p connects on the next session. Each entry shows what it costs your
+            for all projects), 9p connects on the next session. Each entry shows what it costs your
             context window: tools you don&apos;t need are pure bloat.
           </p>
           {MCP_GALLERY.map((entry) => (

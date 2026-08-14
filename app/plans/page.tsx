@@ -47,7 +47,7 @@ export default function Plans() {
           </p>
           <div className="notice">
             Payments arrive in the next release (Stripe + Dubu Pay). During the beta your plan is
-            set by the team — ask in the beta channel.
+            set by the team. Ask in the beta channel.
           </div>
           <div className="grid">
             {PLANS.map((p) => (

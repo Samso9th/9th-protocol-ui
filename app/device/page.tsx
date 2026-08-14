@@ -13,7 +13,7 @@ interface Pending {
 
 type Status = "idle" | "checking" | "found" | "approved" | "denied" | "error";
 
-/** Device-grant approval screen — the browser half of `9p login`. */
+/** Device-grant approval screen, the browser half of `9p login`. */
 export default function DevicePage() {
   return (
     <Suspense fallback={<div className="content">loading…</div>}>

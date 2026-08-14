@@ -85,7 +85,7 @@ function DashboardBody({
   return (
     <>
       <h1>Usage</h1>
-      <p className="sub">credits meter raw model cost — 1 credit = $0.01 of compute</p>
+      <p className="sub">credits meter raw model cost, 1 credit = $0.01 of compute</p>
       <div className="grid">
         <div className="card">
           <strong>Balance</strong>
@@ -135,7 +135,7 @@ function DashboardBody({
             {usage?.buckets.map((b) => (
               <tr key={b.key}>
                 <td className="mono">
-                  {/* session ids are UUIDs — a full one wrecks the column */}
+                  {/* session ids are UUIDs, a full one wrecks the column */}
                   {groupBy === "session" && b.key.length > 12 ? `${b.key.slice(0, 8)}…` : b.key}
                 </td>
                 <td className="mono">{b.requests}</td>
@@ -184,11 +184,11 @@ function DashboardBody({
                 <td>
                   <span className={`badge${t.type === "spend" ? "" : " accent"}`}>{t.type}</span>
                 </td>
-                <td className="mono">{t.model ?? "—"}</td>
+                <td className="mono">{t.model ?? "-"}</td>
                 <td className="mono">
                   {t.type === "spend"
                     ? `${t.inputTokens} / ${t.cachedTokens} / ${t.outputTokens}`
-                    : "—"}
+                    : "-"}
                 </td>
                 <td className="mono">{Number(t.credits).toFixed(2)}</td>
               </tr>
@@ -196,7 +196,7 @@ function DashboardBody({
             {!ledger.length && (
               <tr>
                 <td colSpan={5} style={{ color: "var(--dim)" }}>
-                  no activity yet — run <code>9p</code> in a project
+                  no activity yet. Run <code>9p</code> in a project
                 </td>
               </tr>
             )}
