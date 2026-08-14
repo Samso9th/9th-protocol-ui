@@ -11,7 +11,7 @@ const PLANS = [
     window: 120,
     weekly: 350,
     blurb: "Economy coders full-time, Sonnet-class metered",
-    models: "GLM · Qwen3 Coder · DeepSeek · MiniMax · Kimi K2.7 + K3 · Sonnet 5 · Gemini · GPT-5.3 Codex",
+    models: "GLM · Qwen3 Coder · DeepSeek · MiniMax · Kimi K2.7 · Sonnet 5 · Gemini · GPT-5.3 Codex",
   },
   {
     id: "pro",
@@ -31,7 +31,7 @@ const PLANS = [
     window: 850,
     weekly: 3000,
     blurb: "Opus + Fable 5 included",
-    models: "Everything + Opus 4.8 · Opus 4.8 Fast · Fable 5",
+    models: "Everything + Kimi K3 · Opus 4.8 · Opus 4.8 Fast · Fable 5",
   },
 ];
 
