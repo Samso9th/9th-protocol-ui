@@ -1,0 +1,4 @@
+# Long-cache immutable Next.js static assets (recommended by OpenNext:
+# https://opennext.js.org/cloudflare/howtos/static-assets)
+/_next/static/*
+  Cache-Control: public,max-age=31536000,immutable
