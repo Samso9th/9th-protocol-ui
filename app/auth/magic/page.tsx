@@ -61,7 +61,7 @@ function MagicBody() {
           <>
             <p className="sub">{error}</p>
             <p className="sub" style={{ fontSize: 12 }}>
-              Sign-in links work once and expire after 15 minutes.
+              Magic links work once and expire after 15 minutes.
             </p>
             <a href="/login" className="oauth-btn" style={{ marginTop: 18 }}>
               request a new link

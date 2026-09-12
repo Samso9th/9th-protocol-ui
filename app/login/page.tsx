@@ -41,7 +41,7 @@ function LoginBody() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      if (!res.ok) throw new Error("Could not send the sign-in link");
+      if (!res.ok) throw new Error("Could not send the magic link");
       setSent(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -83,7 +83,7 @@ function LoginBody() {
         <div className="auth-card">
           <h1>Check your email</h1>
           <p className="sub">
-            If an account can be created or found for <strong>{email}</strong>, a sign-in link
+            If an account can be created or found for <strong>{email}</strong>, a magic link
             is on its way. It expires in 15 minutes.
           </p>
           <button className="ghost" style={{ marginTop: 18 }} onClick={() => setSent(false)}>
@@ -134,7 +134,7 @@ function LoginBody() {
 
         <div style={{ marginTop: 18 }} className="row spread">
           <button disabled={busy}>
-            {busy ? "…" : mode === "magic" ? "email me a sign-in link" : "sign in"}
+            {busy ? "…" : mode === "magic" ? "email me a magic link" : "sign in"}
           </button>
           <Link href="/register">create account</Link>
         </div>
