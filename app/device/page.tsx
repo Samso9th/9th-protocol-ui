@@ -54,7 +54,7 @@ function DeviceBody() {
 
   async function decide(action: "approve" | "deny") {
     try {
-      await api("/auth/device/approve", { json: { userCode: pending?.userCode ?? code, action } });
+      await api("/auth/device/approve", { method: "POST", json: { userCode: pending?.userCode ?? code, action } });
       setStatus(action === "approve" ? "approved" : "denied");
     } catch (err) {
       setStatus("error");

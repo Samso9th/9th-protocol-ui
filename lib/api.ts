@@ -39,6 +39,10 @@ export async function api<T>(path: string, init?: RequestInit & { json?: unknown
   const doFetch = () => {
     const tokens = getTokens();
     return fetch(`${API_URL}${path}`, {
+      // A json payload implies POST unless the caller says otherwise — without
+      // this, a body on a methodless fetch goes out as GET and the browser
+      // throws "Request with GET/HEAD method cannot have body".
+      ...(init?.json !== undefined && !init?.method ? { method: "POST" } : {}),
       ...init,
       headers: {
         ...(init?.json !== undefined ? { "Content-Type": "application/json" } : {}),
