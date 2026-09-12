@@ -21,12 +21,16 @@ const GUIDES = {
       "Copy the token (starts with github_pat_) and paste it below",
     ],
   },
-  vercel: {
-    title: "Vercel",
-    what: "lets the agent deploy previews and production from your projects",
+  cloudflare: {
+    title: "Cloudflare",
+    what:
+      "lets the agent deploy Workers and Pages and manage your domains — like Vercel, " +
+      "but with DNS and domains in the same dashboard and far more programmable features " +
+      "(Workers, routes, cron, bindings)",
     steps: [
-      "Vercel → Account Settings → Tokens → Create token",
-      "Scope: your team or personal account",
+      "Cloudflare dashboard → My Profile → API Tokens → Create Token",
+      "Template: Edit Cloudflare Workers (Workers Scripts: Edit, Account Settings: Read)",
+      "Account resources: include → your account; Zone resources: include → your zones",
       "Copy the token and paste it below",
     ],
   },

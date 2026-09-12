@@ -1,7 +1,7 @@
 "use client";
 
 import { Shell, Snippet } from "@/components/shell";
-import { SKILLS_GALLERY } from "@/lib/gallery";
+import { BUILTIN_SKILLS, SKILLS_GALLERY } from "@/lib/gallery";
 
 export default function SkillsPage() {
   return (
@@ -23,6 +23,21 @@ export default function SkillsPage() {
               save as <code>.9p/skills/ship.md</code> → invoke with <code>/ship</code>
             </p>
           </div>
+          <h2>Built-in skills</h2>
+          <p className="sub">
+            ship with 9p — copy the markdown into <code>~/.9p/skills/</code> (global) or{" "}
+            <code>.9p/skills/</code> (project), then invoke with <code>/name</code>
+          </p>
+          {BUILTIN_SKILLS.map((s) => (
+            <div className="card" key={s.name}>
+              <div className="row spread">
+                <strong>/{s.name}</strong>
+                <span className="badge">built-in</span>
+              </div>
+              <p style={{ fontSize: 13, color: "var(--dim)", margin: "6px 0" }}>{s.description}</p>
+              <Snippet text={s.content} />
+            </div>
+          ))}
           <h2>Curated collections</h2>
           <p className="sub">
             adapt these community collections into 9p skill files, copy the parts you need, keep
