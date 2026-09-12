@@ -12,7 +12,9 @@ export default function McpPage() {
           <p className="sub">
             add a server to <code>.9p/mcp.json</code> in your project (or <code>~/.9p/mcp.json</code>{" "}
             for all projects), 9p connects on the next session. Each entry shows what it costs your
-            context window: tools you don&apos;t need are pure bloat.
+            context window: tools you don&apos;t need are pure bloat. 9p&apos;s built-in tools
+            (read, write, edit, bash, grep, web fetch and more) ship with the agent — this page is
+            only about adding more via MCP.
           </p>
           {MCP_GALLERY.map((entry) => (
             <div className="card" key={entry.name}>
