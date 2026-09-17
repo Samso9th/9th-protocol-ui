@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Brand } from "@/components/shell";
+import { AuthTheme } from "@/components/theme";
 import { API_URL, saveTokens } from "@/lib/api";
 
 export default function Register() {
@@ -31,8 +33,11 @@ export default function Register() {
       if (!res.ok || !data.accessToken || !data.refreshToken) {
         throw new Error(data.message ?? "registration failed");
       }
-      saveTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
-      router.push("/dashboard");
+      saveTokens({
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+      });
+      router.push("/workspace");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -42,25 +47,47 @@ export default function Register() {
 
   return (
     <div className="auth-wrap">
+      <AuthTheme />
       <form className="auth-card" onSubmit={submit}>
-        <h1>9th Protocol</h1>
-        <p className="sub">create your account, includes a free trial (~2–3 tasks)</p>
-        <label>name</label>
-        <input value={name} onChange={(e) => setName(e.target.value)} />
-        <label>email</label>
-        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        <label>password (min 8 chars)</label>
+        <Brand />
+        <h1>Make room for your next idea.</h1>
+        <p className="sub">
+          Start with a free trial, enough for about 2–3 tasks.
+        </p>
+        <label htmlFor="name">Name</label>
         <input
+          id="name"
+          autoComplete="name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <label htmlFor="email">Email address</label>
+        <input
+          id="email"
+          autoComplete="email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <label htmlFor="password">Password (at least 8 characters)</label>
+        <input
+          id="password"
+          autoComplete="new-password"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
           minLength={8}
         />
-        {error && <div className="error-text">{error}</div>}
+        {error && (
+          <div className="error-text" role="alert">
+            {error}
+          </div>
+        )}
         <div style={{ marginTop: 18 }} className="row spread">
-          <button disabled={busy}>{busy ? "…" : "create account"}</button>
-          <Link href="/login">sign in instead</Link>
+          <button disabled={busy}>{busy ? "…" : "Create account"}</button>
+          <Link href="/login">Sign in instead</Link>
         </div>
       </form>
     </div>

@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Shell } from "@/components/shell";
-import { api } from "@/lib/api";
+import { Icon, type IconName } from "@/components/icon";
+import { AmbientBand } from "@/components/workspace/primitives";
+import { api, type Me } from "@/lib/api";
 
 interface Tx {
   id: string;
@@ -15,7 +18,6 @@ interface Tx {
   rawCostUsd: number;
   createdAt: string;
 }
-
 interface UsageBucket {
   key: string;
   requests: number;
@@ -26,183 +28,388 @@ interface UsageBucket {
   credits: number;
   cacheHitRate: number;
 }
-
 interface UsageReport {
   totals: Omit<UsageBucket, "key">;
   buckets: UsageBucket[];
 }
-
 type GroupBy = "model" | "day" | "session";
+const fmtTokens = (n: number) =>
+  n >= 1_000_000
+    ? `${(n / 1_000_000).toFixed(1)}M`
+    : n >= 1000
+      ? `${(n / 1000).toFixed(1)}k`
+      : String(n);
 
-const fmtTokens = (n: number): string =>
-  n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
-
-function Meter({ label, spent, cap }: { label: string; spent: number; cap: number }) {
-  const pct = cap > 0 ? Math.min(100, (spent / cap) * 100) : 0;
+function Meter({
+  label,
+  spent,
+  cap,
+  icon,
+}: {
+  label: string;
+  spent: number;
+  cap: number;
+  icon: IconName;
+}) {
+  const pct = cap > 0 ? Math.max(0, Math.min(100, (spent / cap) * 100)) : 0;
   return (
-    <div className="card">
-      <div className="row spread">
-        <strong>{label}</strong>
-        <span className="mono" style={{ color: "var(--dim)" }}>
-          {spent.toFixed(1)} / {cap} cr
-        </span>
+    <div className="budget-item">
+      <div className="metric-label">
+        {label}
+        <Icon name={icon} size={17} />
       </div>
-      <div className={`meter${pct > 80 ? " hot" : ""}`}>
+      <div className="metric-value">
+        {spent.toFixed(1)}
+        <span>/ {cap.toLocaleString()} cr</span>
+      </div>
+      <p className="metric-note">
+        {Math.max(0, cap - spent).toFixed(1)} credits remaining
+      </p>
+      <div
+        className={`meter${pct > 80 ? " hot" : ""}`}
+        role="meter"
+        aria-label={label}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={pct}
+        aria-valuetext={`${spent.toFixed(1)} of ${cap} credits used`}
+      >
         <div style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
 }
 
-export default function Dashboard() {
+function DailyChart({
+  report,
+  error,
+}: {
+  report: UsageReport | null;
+  error: boolean;
+}) {
+  const days =
+    report?.buckets.slice().sort((a, b) => a.key.localeCompare(b.key)) ?? [];
+  const max = Math.max(1, ...days.map((day) => day.credits));
   return (
-    <Shell>
-      {(me) => <DashboardBody balance={me.limits.balance} limits={me.limits} />}
-    </Shell>
+    <div className="card chart-card">
+      <div className="chart-heading">
+        <strong>Compute activity</strong>
+        <span className="chart-legend">Credits used · last 30 days</span>
+      </div>
+      {days.length ? (
+        <>
+          <div
+            className="usage-chart"
+            role="group"
+            aria-label="Daily compute credits, last 30 days"
+          >
+            {days.map((day) => (
+              <div
+                key={day.key}
+                className="chart-bar"
+                tabIndex={0}
+                aria-label={`${day.key}: ${day.credits.toFixed(2)} credits`}
+                data-label={`${day.key}: ${day.credits.toFixed(2)} cr`}
+              >
+                <span style={{ height: `${(day.credits / max) * 100}%` }} />
+              </div>
+            ))}
+          </div>
+          <div className="chart-axis">
+            <span>{days[0].key}</span>
+            <span>{report?.totals.credits.toFixed(1)} credits total</span>
+            <span>{days.length > 1 ? days[days.length - 1].key : ""}</span>
+          </div>
+        </>
+      ) : (
+        <div className="chart-empty" role="status">
+          <Icon name="chart" size={25} />
+          <strong>
+            {error
+              ? "Activity is unavailable"
+              : report
+                ? "Your next idea starts here"
+                : "Loading your activity…"}
+          </strong>
+          <span>
+            {error
+              ? "Refresh the page to try again."
+              : report
+                ? "Run a task with 9p and your compute activity will appear here."
+                : "Fetching your last 30 days of usage."}
+          </span>
+        </div>
+      )}
+    </div>
   );
 }
 
-function DashboardBody({
-  balance,
-  limits,
-}: {
-  balance: number;
-  limits: { windowSpent: number; windowCap: number; weeklySpent: number; weeklyCap: number };
-}) {
-  const [ledger, setLedger] = useState<Tx[]>([]);
+export default function Dashboard() {
+  return <Shell>{(me) => <DashboardBody me={me} />}</Shell>;
+}
+
+function DashboardBody({ me }: { me: Me }) {
+  const [tab, setTab] = useState<"usage" | "activity">("usage");
+  const [ledger, setLedger] = useState<Tx[] | null>(null);
   const [groupBy, setGroupBy] = useState<GroupBy>("model");
   const [usage, setUsage] = useState<UsageReport | null>(null);
-
+  const [daily, setDaily] = useState<UsageReport | null>(null);
+  const [ledgerError, setLedgerError] = useState(false);
+  const [usageError, setUsageError] = useState(false);
+  const [dailyError, setDailyError] = useState(false);
   useEffect(() => {
-    api<{ transactions: Tx[] }>("/billing/ledger").then((d) => setLedger(d.transactions), () => {});
+    let active = true;
+    api<{ transactions: Tx[] }>("/billing/ledger").then(
+      (data) => {
+        if (active) setLedger(data.transactions);
+      },
+      () => {
+        if (active) setLedgerError(true);
+      },
+    );
+    api<UsageReport>("/billing/usage?groupBy=day&days=30").then(
+      (data) => {
+        if (active) setDaily(data);
+      },
+      () => {
+        if (active) setDailyError(true);
+      },
+    );
+    return () => {
+      active = false;
+    };
   }, []);
-
   useEffect(() => {
+    let active = true;
     setUsage(null);
-    api<UsageReport>(`/billing/usage?groupBy=${groupBy}&days=30`).then(setUsage, () => {});
+    setUsageError(false);
+    api<UsageReport>(`/billing/usage?groupBy=${groupBy}&days=30`).then(
+      (data) => {
+        if (active) setUsage(data);
+      },
+      () => {
+        if (active) setUsageError(true);
+      },
+    );
+    return () => {
+      active = false;
+    };
   }, [groupBy]);
-
   return (
     <>
-      <h1>Usage</h1>
-      <p className="sub">credits meter raw model cost, 1 credit = $0.01 of compute</p>
-      <div className="grid">
-        <div className="card">
-          <strong>Balance</strong>
-          <div style={{ fontSize: 28, marginTop: 6 }} className="mono">
-            {balance.toFixed(1)} <span style={{ fontSize: 14, color: "var(--dim)" }}>credits</span>
+      <div className="page-heading">
+        <div>
+          <span className="eyebrow">Your workspace</span>
+          <h1>A little perspective.</h1>
+          <p className="sub">
+            See where your ideas take you. All your compute, in one place.
+          </p>
+        </div>
+        <Link className="pill-button" href="/workspace">
+          <Icon name="chat" size={16} /> Back to chat
+        </Link>
+      </div>
+      <section className="activity-overview">
+        <div className="balance-feature">
+          <AmbientBand />
+          <span className="eyebrow">Available balance</span>
+          <div className="balance-number">
+            {me.limits.balance.toLocaleString(undefined, {
+              maximumFractionDigits: 1,
+            })}
+            <small>credits</small>
           </div>
+          <p>1 credit = $0.01 of compute</p>
+          <Link className="pill-button" href="/plans">
+            <Icon name="diamond" size={15} />
+            {me.user.plan} plan <Icon name="arrow" size={14} />
+          </Link>
         </div>
-        <Meter label="5-hour window" spent={limits.windowSpent} cap={limits.windowCap} />
-        <Meter label="Weekly" spent={limits.weeklySpent} cap={limits.weeklyCap} />
-      </div>
-      <div className="row spread" style={{ alignItems: "baseline", marginTop: 28 }}>
-        <h2 style={{ margin: 0 }}>Last 30 days</h2>
-        <div className="row" style={{ gap: 6 }}>
-          {(["model", "day", "session"] as GroupBy[]).map((g) => (
-            <button
-              key={g}
-              onClick={() => setGroupBy(g)}
-              className={`badge${groupBy === g ? " accent" : ""}`}
-              style={{ cursor: "pointer", border: "none" }}
-            >
-              by {g}
-            </button>
-          ))}
+        <div className="budget-column">
+          <Meter
+            label="5-hour window"
+            spent={me.limits.windowSpent}
+            cap={me.limits.windowCap}
+            icon="clock"
+          />
+          <Meter
+            label="This week"
+            spent={me.limits.weeklySpent}
+            cap={me.limits.weeklyCap}
+            icon="chart"
+          />
         </div>
+      </section>
+      <DailyChart report={daily} error={dailyError} />
+      <div
+        className="activity-tabs"
+        role="tablist"
+        aria-label="Activity reports"
+      >
+        <button
+          role="tab"
+          id="usage-tab"
+          aria-controls="usage-report"
+          aria-selected={tab === "usage"}
+          onClick={() => setTab("usage")}
+        >
+          Model usage
+        </button>
+        <button
+          role="tab"
+          id="activity-tab"
+          aria-controls="activity-report"
+          aria-selected={tab === "activity"}
+          onClick={() => setTab("activity")}
+        >
+          Transactions
+        </button>
       </div>
-
-      {usage && usage.totals.requests > 0 && (
-        <p className="sub" style={{ marginTop: 6 }}>
-          {usage.totals.requests} calls · {usage.totals.credits.toFixed(1)} credits · $
-          {usage.totals.rawCostUsd.toFixed(4)} raw ·{" "}
-          {(usage.totals.cacheHitRate * 100).toFixed(0)}% cached
-        </p>
+      {tab === "usage" && (
+        <section id="usage-report" role="tabpanel" aria-labelledby="usage-tab">
+          <div className="section-heading">
+            <div>
+              <h2>Usage breakdown</h2>
+              <p>
+                {usage
+                  ? `${usage.totals.requests.toLocaleString()} calls · ${usage.totals.credits.toFixed(1)} credits · $${usage.totals.rawCostUsd.toFixed(4)} compute · ${(usage.totals.cacheHitRate * 100).toFixed(0)}% cached`
+                  : "Your model activity over the last 30 days"}
+              </p>
+            </div>
+            <div className="segmented" role="group" aria-label="Group usage by">
+              {(["model", "day", "session"] as const).map((group) => (
+                <button
+                  key={group}
+                  className={groupBy === group ? "selected" : ""}
+                  aria-pressed={groupBy === group}
+                  onClick={() => setGroupBy(group)}
+                >
+                  {group}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="card table-card">
+            <table>
+              <caption className="sr-only">
+                Usage by {groupBy}, last 30 days
+              </caption>
+              <thead>
+                <tr>
+                  <th style={{ textTransform: "capitalize" }}>{groupBy}</th>
+                  <th>Calls</th>
+                  <th>Tokens · in / cached / out</th>
+                  <th>Cached</th>
+                  <th>Credits</th>
+                </tr>
+              </thead>
+              <tbody>
+                {usage?.buckets.map((bucket) => (
+                  <tr key={bucket.key}>
+                    <td className="mono" title={bucket.key}>
+                      {groupBy === "session" && bucket.key.length > 12
+                        ? `${bucket.key.slice(0, 8)}…`
+                        : bucket.key}
+                    </td>
+                    <td className="mono">{bucket.requests}</td>
+                    <td className="mono">
+                      {fmtTokens(bucket.inputTokens)} /{" "}
+                      {fmtTokens(bucket.cachedTokens)} /{" "}
+                      {fmtTokens(bucket.outputTokens)}
+                    </td>
+                    <td className="mono">
+                      {(bucket.cacheHitRate * 100).toFixed(0)}%
+                    </td>
+                    <td className="mono">{bucket.credits.toFixed(2)}</td>
+                  </tr>
+                ))}
+                {(!usage || !usage.buckets.length) && (
+                  <tr>
+                    <td colSpan={5} className="empty-cell" role="status">
+                      {usageError
+                        ? "Couldn’t load usage. Try selecting another group or refreshing."
+                        : usage
+                          ? "No usage in the last 30 days. Your first task will show up here."
+                          : "Loading usage…"}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
       )}
-
-      <div className="card" style={{ padding: 0 }}>
-        <table>
-          <thead>
-            <tr>
-              <th>{groupBy}</th>
-              <th>calls</th>
-              <th>tokens (in / cached / out)</th>
-              <th>cached</th>
-              <th>credits</th>
-            </tr>
-          </thead>
-          <tbody>
-            {usage?.buckets.map((b) => (
-              <tr key={b.key}>
-                <td className="mono">
-                  {/* session ids are UUIDs, a full one wrecks the column */}
-                  {groupBy === "session" && b.key.length > 12 ? `${b.key.slice(0, 8)}…` : b.key}
-                </td>
-                <td className="mono">{b.requests}</td>
-                <td className="mono">
-                  {fmtTokens(b.inputTokens)} / {fmtTokens(b.cachedTokens)} /{" "}
-                  {fmtTokens(b.outputTokens)}
-                </td>
-                <td className="mono">{(b.cacheHitRate * 100).toFixed(0)}%</td>
-                <td className="mono">{b.credits.toFixed(2)}</td>
-              </tr>
-            ))}
-            {usage && !usage.buckets.length && (
-              <tr>
-                <td colSpan={5} style={{ color: "var(--dim)" }}>
-                  nothing in the last 30 days
-                </td>
-              </tr>
-            )}
-            {!usage && (
-              <tr>
-                <td colSpan={5} style={{ color: "var(--dim)" }}>
-                  loading…
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <h2>Recent activity</h2>
-      <div className="card" style={{ padding: 0 }}>
-        <table>
-          <thead>
-            <tr>
-              <th>when</th>
-              <th>type</th>
-              <th>model</th>
-              <th>tokens (in / cached / out)</th>
-              <th>credits</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ledger.slice(0, 25).map((t) => (
-              <tr key={t.id}>
-                <td className="mono">{new Date(t.createdAt).toLocaleString()}</td>
-                <td>
-                  <span className={`badge${t.type === "spend" ? "" : " accent"}`}>{t.type}</span>
-                </td>
-                <td className="mono">{t.model ?? "-"}</td>
-                <td className="mono">
-                  {t.type === "spend"
-                    ? `${t.inputTokens} / ${t.cachedTokens} / ${t.outputTokens}`
-                    : "-"}
-                </td>
-                <td className="mono">{Number(t.credits).toFixed(2)}</td>
-              </tr>
-            ))}
-            {!ledger.length && (
-              <tr>
-                <td colSpan={5} style={{ color: "var(--dim)" }}>
-                  no activity yet. Run <code>9p</code> in a project
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      {tab === "activity" && (
+        <section
+          id="activity-report"
+          role="tabpanel"
+          aria-labelledby="activity-tab"
+        >
+          <div className="section-heading">
+            <h2>Recent activity</h2>
+            <span>Latest 25 transactions</span>
+          </div>
+          <div className="card table-card">
+            <table>
+              <caption className="sr-only">Recent credit transactions</caption>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Activity</th>
+                  <th>Model</th>
+                  <th>Tokens · in / cached / out</th>
+                  <th>Credits</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ledger?.slice(0, 25).map((tx) => (
+                  <tr key={tx.id}>
+                    <td
+                      className="mono"
+                      title={new Date(tx.createdAt).toLocaleString()}
+                    >
+                      {new Date(tx.createdAt).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </td>
+                    <td>
+                      <span
+                        className={`badge${tx.type === "spend" ? "" : " accent"}`}
+                      >
+                        {tx.type}
+                      </span>
+                    </td>
+                    <td className="mono">{tx.model ?? "–"}</td>
+                    <td className="mono">
+                      {tx.type === "spend"
+                        ? `${fmtTokens(tx.inputTokens)} / ${fmtTokens(tx.cachedTokens)} / ${fmtTokens(tx.outputTokens)}`
+                        : "–"}
+                    </td>
+                    <td className="mono">{Number(tx.credits).toFixed(2)}</td>
+                  </tr>
+                ))}
+                {(!ledger || !ledger.length) && (
+                  <tr>
+                    <td colSpan={5} className="empty-cell" role="status">
+                      {ledgerError ? (
+                        "Couldn’t load recent activity. Refresh to try again."
+                      ) : ledger ? (
+                        <>
+                          All quiet for now. Run <code>9p</code> in a project to
+                          get started.
+                        </>
+                      ) : (
+                        "Loading recent activity…"
+                      )}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </>
   );
 }

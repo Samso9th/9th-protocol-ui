@@ -1,6 +1,7 @@
 "use client";
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4009/v1";
+export const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4009/v1";
 
 interface Tokens {
   accessToken: string;
@@ -35,7 +36,10 @@ async function tryRefresh(): Promise<boolean> {
 }
 
 /** Authenticated fetch with a single refresh retry; redirects to /login on failure. */
-export async function api<T>(path: string, init?: RequestInit & { json?: unknown }): Promise<T> {
+export async function apiResponse(
+  path: string,
+  init?: RequestInit & { json?: unknown },
+): Promise<Response> {
   const doFetch = () => {
     const tokens = getTokens();
     return fetch(`${API_URL}${path}`, {
@@ -45,7 +49,9 @@ export async function api<T>(path: string, init?: RequestInit & { json?: unknown
       ...(init?.json !== undefined && !init?.method ? { method: "POST" } : {}),
       ...init,
       headers: {
-        ...(init?.json !== undefined ? { "Content-Type": "application/json" } : {}),
+        ...(init?.json !== undefined
+          ? { "Content-Type": "application/json" }
+          : {}),
         ...(tokens ? { Authorization: `Bearer ${tokens.accessToken}` } : {}),
         ...init?.headers,
       },
@@ -63,7 +69,14 @@ export async function api<T>(path: string, init?: RequestInit & { json?: unknown
     const body = (await res.json().catch(() => ({}))) as { message?: string };
     throw new Error(body.message ?? `request failed (${res.status})`);
   }
-  return (await res.json()) as T;
+  return res;
+}
+
+export async function api<T>(
+  path: string,
+  init?: RequestInit & { json?: unknown },
+): Promise<T> {
+  return (await (await apiResponse(path, init)).json()) as T;
 }
 
 export interface LimitState {

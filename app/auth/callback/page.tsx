@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AuthTheme } from "@/components/theme";
 import { API_URL, saveTokens } from "@/lib/api";
 
 /**
@@ -50,8 +51,11 @@ function CallbackBody() {
         if (!res.ok || !data.accessToken || !data.refreshToken) {
           throw new Error(data.message ?? "Sign-in failed");
         }
-        saveTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
-        router.replace("/dashboard");
+        saveTokens({
+          accessToken: data.accessToken,
+          refreshToken: data.refreshToken,
+        });
+        router.replace("/workspace");
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       }
@@ -60,6 +64,7 @@ function CallbackBody() {
 
   return (
     <div className="auth-wrap">
+      <AuthTheme />
       <div className="auth-card">
         <h1>{error ? "Sign-in failed" : "Signing you in…"}</h1>
         {error && (

@@ -1,54 +1,90 @@
 "use client";
-
 import { Shell, Snippet } from "@/components/shell";
-
+import { Icon } from "@/components/icon";
 export default function ObsidianPage() {
   return (
     <Shell>
       {() => (
         <>
-          <h1>Obsidian vault memory</h1>
-          <p className="sub">
-            give 9p long-term memory it navigates like a knowledge graph. Your memory store never
-            leaves your device
-          </p>
-          <div className="card">
-            <strong>1 · Link a vault</strong>
-            <p style={{ fontSize: 13, color: "var(--dim)", margin: "6px 0" }}>
-              In your project, run:
-            </p>
-            <Snippet text={`9p init\n# choose "2. vault"`} />
-            <p style={{ fontSize: 13, color: "var(--dim)", marginTop: 8 }}>
-              This scaffolds <code>INDEX.md</code>, <code>jobs/</code>, <code>daily/</code>,{" "}
-              <code>decisions/</code>, and <code>graph/</code>, and teaches the agent the vault
-              protocol: read the index first, append instead of creating notes, log work to daily
-              notes, record decisions.
-            </p>
+          <div className="page-heading">
+            <div>
+              <span className="eyebrow">The agent toolkit</span>
+              <h1>Ideas worth remembering.</h1>
+              <p className="sub">
+                A little context goes a long way. Give your local agent a vault
+                of project knowledge it can carry into the next session.
+              </p>
+            </div>
           </div>
-          <div className="card">
-            <strong>2 · Map your codebase</strong>
-            <Snippet text={`9p map`} />
-            <p style={{ fontSize: 13, color: "var(--dim)", marginTop: 8 }}>
-              Generates wiki notes for every major module with [[links]] between them. Future
-              sessions navigate the map instead of re-reading raw files. That&apos;s where the
-              token savings come from.
-            </p>
-          </div>
-          <div className="card">
-            <strong>3 · See the graph (optional)</strong>
-            <p style={{ fontSize: 13, color: "var(--dim)", margin: "6px 0" }}>
-              Install Obsidian (free, obsidian.md), open your vault folder as a vault, and use graph
-              view to watch your project&apos;s knowledge grow. Obsidian is a viewer, 9p works on
-              the plain markdown either way.
-            </p>
-          </div>
-          <div className="card">
-            <strong>Privacy</strong>
-            <p style={{ fontSize: 13, color: "var(--dim)", margin: "6px 0" }}>
-              The vault lives on your disk and syncs wherever you choose (git, iCloud, nothing).
-              Prompts that reference vault excerpts are sent to the model you&apos;re using, the
-              vault itself is never uploaded or stored by us.
-            </p>
+          <div className="guide-layout">
+            <div>
+              <div
+                className="memory-map"
+                aria-label="Your project memory connects code, decisions, and notes"
+              >
+                <div className="memory-node main-node">
+                  <Icon name="vault" size={24} />
+                  <strong>Your project memory</strong>
+                </div>
+                <div className="memory-branches">
+                  <span>
+                    <Icon name="file" />
+                    Code map
+                  </span>
+                  <span>
+                    <Icon name="brain" />
+                    Decisions
+                  </span>
+                  <span>
+                    <Icon name="book" />
+                    Daily notes
+                  </span>
+                </div>
+              </div>
+              <div className="memory-note">
+                <Icon name="shield" size={20} />
+                <div>
+                  <h3>At home on your device.</h3>
+                  <p>
+                    Your vault is a folder of Markdown files. Choose how it
+                    syncs. Excerpts used in prompts go to your selected model.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="guide-steps">
+              <section className="guide-step">
+                <h2>Link a vault</h2>
+                <p>
+                  Start in your project. Choose “2. vault” to create the index,
+                  daily notes, decisions, and knowledge graph folders.
+                </p>
+                <Snippet text={'9p init\n# Choose "2. vault"'} />
+              </section>
+              <section className="guide-step">
+                <h2>Map your codebase</h2>
+                <p>
+                  Create linked notes for your main modules. Future sessions can
+                  navigate the map and load the context they need.
+                </p>
+                <Snippet text="9p map" />
+              </section>
+              <section className="guide-step">
+                <h2>See your knowledge grow</h2>
+                <p>
+                  Optionally open the folder in Obsidian for its graph view.
+                  Your agent works with plain Markdown either way.
+                </p>
+                <a
+                  className="pill-button"
+                  href="https://obsidian.md"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Explore Obsidian <Icon name="external" size={14} />
+                </a>
+              </section>
+            </div>
           </div>
         </>
       )}

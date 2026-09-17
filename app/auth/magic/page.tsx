@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AuthTheme } from "@/components/theme";
 import { API_URL, saveTokens } from "@/lib/api";
 
 /** Landing page for an emailed magic link. Redeems the token, then signs in. */
@@ -43,10 +44,15 @@ function MagicBody() {
           refreshToken?: string;
         };
         if (!res.ok || !data.accessToken || !data.refreshToken) {
-          throw new Error(data.message ?? "That link is invalid or has expired");
+          throw new Error(
+            data.message ?? "That link is invalid or has expired",
+          );
         }
-        saveTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
-        router.replace("/dashboard");
+        saveTokens({
+          accessToken: data.accessToken,
+          refreshToken: data.refreshToken,
+        });
+        router.replace("/workspace");
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       }
@@ -55,6 +61,7 @@ function MagicBody() {
 
   return (
     <div className="auth-wrap">
+      <AuthTheme />
       <div className="auth-card">
         <h1>{error ? "Link didn't work" : "Signing you in…"}</h1>
         {error && (
