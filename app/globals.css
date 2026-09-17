@@ -2713,3 +2713,55 @@ tbody tr:hover {
   margin-left: auto;
   margin-right: auto;
 }
+
+/* Server-executed tool activity above an assistant reply. Deliberately quiet:
+   it is provenance, not content, and must not compete with the answer. */
+.tool-trail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+.tool-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-soft, #8b8b95);
+}
+.tool-step svg {
+  flex: none;
+  opacity: 0.75;
+}
+.tool-label {
+  flex: none;
+  font-weight: 500;
+}
+.tool-target {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tool-step.running .tool-target {
+  /* Only the in-flight step pulses, so the eye lands on what is happening now. */
+  animation: tool-pulse 1.4s ease-in-out infinite;
+}
+.tool-step.error {
+  color: var(--danger, #d2544f);
+}
+.tool-failed {
+  flex: none;
+  font-size: 11.5px;
+  opacity: 0.85;
+}
+@keyframes tool-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tool-step.running .tool-target { animation: none; }
+}

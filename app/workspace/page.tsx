@@ -14,10 +14,13 @@ import { Markdown } from "@/components/workspace/markdown";
 import { useDictation } from "@/components/workspace/dictation";
 import { api, type Me } from "@/lib/api";
 import {
+  WEB_TOOLS,
+  fetchCapabilities,
   streamChat,
   type ChatMessage,
   type ChatModel,
   type ChatSession,
+  type ToolActivity,
 } from "@/lib/chat";
 
 const fresh = (): ChatSession => ({
@@ -38,6 +41,8 @@ function ChatWorkspace({ me }: { me: Me }) {
   const [history, setHistory] = useState<ChatSession[]>([]);
   const [draft, setDraft] = useState("");
   const [models, setModels] = useState<ChatModel[]>([]);
+  /** Null until capability discovery answers; gates the web tools. */
+  const [webTools, setWebTools] = useState<readonly string[] | null>(null);
   const [model, setModel] = useState("");
   const [busy, setBusy] = useState(false);
   const [think, setThink] = useState(false);
@@ -71,6 +76,23 @@ function ChatWorkspace({ me }: { me: Me }) {
     (text) => setDraft((value) => `${value}${value ? " " : ""}${text}`),
     setNotice,
   );
+  useEffect(() => {
+    let active = true;
+    // Offer web search only where the server has a provider configured, so a
+    // deployment without search keys shows no affordance rather than one that
+    // fails on use. A failed lookup leaves tools off: a plain turn still works.
+    void fetchCapabilities().then((caps) => {
+      if (!active) return;
+      if (!caps) return setWebTools([]);
+      setWebTools(
+        WEB_TOOLS.filter((name) => caps.features[name === "web_search" ? "webSearch" : "webFetch"]?.available),
+      );
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   useEffect(() => {
     let active = true;
     let saved: ChatSession[] = [];
@@ -291,6 +313,31 @@ function ChatWorkspace({ me }: { me: Me }) {
         messages,
         sessionId: session.id,
         signal: abort.signal,
+        ...(webTools?.length ? { tools: webTools } : {}),
+        onTool: (activity: ToolActivity) =>
+          setSession((current) =>
+            current
+              ? {
+                  ...current,
+                  messages: current.messages.map((message) => {
+                    if (message.id !== answer.id) return message;
+                    const tools = message.tools ?? [];
+                    const at = tools.findIndex((t) => t.id === activity.id);
+                    // A later frame updates the same call in place rather than
+                    // appending, so one search is one row that changes status.
+                    return {
+                      ...message,
+                      tools:
+                        at === -1
+                          ? [...tools, activity]
+                          : tools.map((t, i) =>
+                              i === at ? { ...t, ...activity } : t,
+                            ),
+                    };
+                  }),
+                }
+              : current,
+          ),
         onText: (text) =>
           setSession((current) =>
             current
@@ -418,6 +465,27 @@ function ChatWorkspace({ me }: { me: Me }) {
                     </span>
                   </div>
                 )}
+                {message.tools?.length ? (
+                  <ul className="tool-trail" aria-label="Research steps">
+                    {message.tools.map((tool) => (
+                      <li key={tool.id} className={`tool-step ${tool.status}`}>
+                        <Icon
+                          name={tool.name === "web_search" ? "search" : "external"}
+                          size={13}
+                        />
+                        <span className="tool-label">
+                          {tool.name === "web_search" ? "Searched" : "Read"}
+                        </span>
+                        <span className="tool-target">
+                          {tool.query ?? tool.url ?? ""}
+                        </span>
+                        {tool.status === "error" && (
+                          <span className="tool-failed">failed</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
                 {message.content ? (
                   <Markdown text={message.displayContent || message.content} />
                 ) : busy ? (
