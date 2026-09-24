@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Shell } from "@/components/shell";
 import { Icon } from "@/components/icon";
 import {
@@ -10,6 +10,14 @@ import {
   FeaturePreview,
   PillButton,
 } from "@/components/workspace/primitives";
+import {
+  StaggerGroup,
+  Toast,
+  useAutoGrow,
+  useBubbleFlight,
+  useChatScroll,
+} from "@/components/workspace/motion";
+import { DUR, EASE } from "@/lib/motion";
 import { Markdown } from "@/components/workspace/markdown";
 import { useDictation } from "@/components/workspace/dictation";
 import { api, type Me } from "@/lib/api";
@@ -56,15 +64,19 @@ function ChatWorkspace({ me }: { me: Me }) {
   } | null>(null);
   const [notice, setNotice] = useState("");
   const [failure, setFailure] = useState("");
+  /** The user bubble currently being flown into from the composer. */
+  const [flying, setFlying] = useState<string | null>(null);
+  const [dropping, setDropping] = useState(false);
   const controller = useRef<AbortController | null>(null);
   const busyRef = useRef(false);
   const fileInput = useRef<HTMLInputElement>(null);
-  const input = useRef<HTMLTextAreaElement>(null);
-  const log = useRef<HTMLDivElement>(null);
   const composer = useRef<HTMLFormElement>(null);
   const sessionRef = useRef<ChatSession | null>(null);
   const historyRef = useRef<ChatSession[]>([]);
-  const stickToBottom = useRef(true);
+  /** Draft text → chat bubble, and composer growth, in one place. */
+  const flight = useBubbleFlight();
+  const input = useAutoGrow(draft);
+  const scroll = useChatScroll(session?.messages);
   useEffect(
     () => () => {
       if ("speechSynthesis" in window) speechSynthesis.cancel();
@@ -192,9 +204,16 @@ function ChatWorkspace({ me }: { me: Me }) {
     }
   }, [notice]);
   useEffect(() => {
-    if (stickToBottom.current && log.current)
-      log.current.scrollTop = log.current.scrollHeight;
-  }, [session?.messages]);
+    /**
+     * Land the flying draft. The bubble only exists after React commits, so the
+     * second half of the flight runs here rather than inside `send`.
+     */
+    if (!flying) return;
+    const bubble = scroll.ref.current?.querySelector<HTMLElement>(
+      `[data-message="${flying}"] .markdown`,
+    );
+    if (bubble) flight.land(bubble);
+  }, [flying, session?.messages, flight, scroll.ref]);
   useEffect(() => {
     function rememberCurrent() {
       const current = sessionRef.current;
@@ -223,7 +242,7 @@ function ChatWorkspace({ me }: { me: Me }) {
       setDraft("");
       setFiles([]);
       setFailure("");
-      input.current?.focus();
+      input.ref.current?.focus();
     }
     const showHistory = () => {
       rememberCurrent();
@@ -282,13 +301,22 @@ function ChatWorkspace({ me }: { me: Me }) {
       messages: [...messages, answer],
       updatedAt: new Date().toISOString(),
     };
+    // Capture the draft *before* the state update clears the textarea: the
+    // ghost has to be created while the text is still on screen, or the flight
+    // starts from an empty field.
+    const willFly = retry
+      ? false
+      : flight.capture(input.ref.current, draft.trim(), () => setFlying(null));
+    setFlying(willFly ? user.id : null);
     setSession(next);
     setDraft("");
     setFiles([]);
     setBusy(true);
     busyRef.current = true;
     setFailure("");
-    stickToBottom.current = true;
+    scroll.pinned.current = true;
+    // The composer re-settles after the bubble leaves it, so the field visibly
+    // gives up its text instead of teleporting.
     requestAnimationFrame(() => {
       if (
         oldTop !== undefined &&
@@ -298,13 +326,16 @@ function ChatWorkspace({ me }: { me: Me }) {
         const offset = oldTop - composer.current.getBoundingClientRect().top;
         composer.current.animate(
           [
-            { transform: `translateY(${offset}px)` },
-            { transform: "translateY(0)" },
+            { transform: `translateY(${offset}px) scale(0.995)` },
+            { transform: "translateY(0) scale(1)" },
           ],
-          { duration: 450, easing: "cubic-bezier(.2,.8,.2,1)" },
+          { duration: DUR.settle, easing: EASE, fill: "none" },
         );
       }
     });
+    // Keep the caret where the user's hands are: the field stays ready for the
+    // next thought while the last one travels to its bubble.
+    input.ref.current?.focus();
     const abort = new AbortController();
     controller.current = abort;
     try {
@@ -422,21 +453,17 @@ function ChatWorkspace({ me }: { me: Me }) {
   }
   const messages = session?.messages || [];
   const empty = !messages.length;
+  const streaming = busy && messages.length > 1;
   return (
     <section
-      className={`chat-workspace${empty ? " is-empty" : ""}${busy ? " is-working" : ""}`}
+      className={`chat-workspace${empty ? " is-empty" : ""}${busy ? " is-working" : ""}${scroll.scrolled ? " is-scrolled" : ""}`}
       aria-label="9th Protocol chat"
     >
       <AmbientBand />
       <div
         className="conversation"
-        ref={log}
-        onScroll={() => {
-          const el = log.current;
-          if (el)
-            stickToBottom.current =
-              el.scrollHeight - el.scrollTop - el.clientHeight < 100;
-        }}
+        ref={scroll.ref}
+        onScroll={scroll.onScroll}
       >
         {empty ? (
           <div className="welcome">
@@ -449,7 +476,20 @@ function ChatWorkspace({ me }: { me: Me }) {
           <>
             <div className="conversation-date">Today</div>
             {messages.map((message, index) => (
-              <article className={`message ${message.role}`} key={message.id}>
+              <article
+                className={`message ${message.role}${
+                  message.role === "assistant" &&
+                  streaming &&
+                  index === messages.length - 1
+                    ? " is-streaming"
+                    : ""
+                }`}
+                key={message.id}
+                data-message={message.id}
+                /* The flight owns this bubble's entrance; the CSS keyframes
+                   would otherwise play underneath it. */
+                data-flight={message.id === flying ? "true" : undefined}
+              >
                 {message.role === "assistant" && (
                   <div className="assistant-identity">
                     <span className="assistant-mark">
@@ -467,8 +507,12 @@ function ChatWorkspace({ me }: { me: Me }) {
                 )}
                 {message.tools?.length ? (
                   <ul className="tool-trail" aria-label="Research steps">
-                    {message.tools.map((tool) => (
-                      <li key={tool.id} className={`tool-step ${tool.status}`}>
+                    {message.tools.map((tool, step) => (
+                      <li
+                        key={tool.id}
+                        className={`tool-step ${tool.status}`}
+                        style={{ "--step": step } as CSSProperties}
+                      >
                         <Icon
                           name={tool.name === "web_search" ? "search" : "external"}
                           size={13}
@@ -487,7 +531,14 @@ function ChatWorkspace({ me }: { me: Me }) {
                   </ul>
                 ) : null}
                 {message.content ? (
-                  <Markdown text={message.displayContent || message.content} />
+                  <>
+                    <Markdown text={message.displayContent || message.content} />
+                    {message.role === "assistant" &&
+                      streaming &&
+                      index === messages.length - 1 && (
+                        <span className="stream-caret" aria-hidden="true" />
+                      )}
+                  </>
                 ) : busy ? (
                   <span
                     className="loading-dots"
@@ -506,7 +557,11 @@ function ChatWorkspace({ me }: { me: Me }) {
                   </p>
                 )}
                 {message.role === "assistant" && message.content && (
-                  <div className="message-actions">
+                  <StaggerGroup
+                    className="message-actions"
+                    distance={4}
+                    step={28}
+                  >
                     <ActionButton
                       icon="copy"
                       label="Copy response"
@@ -585,7 +640,7 @@ function ChatWorkspace({ me }: { me: Me }) {
                         onClick={() => void send(true)}
                       />
                     )}
-                  </div>
+                  </StaggerGroup>
                 )}
               </article>
             ))}
@@ -601,13 +656,37 @@ function ChatWorkspace({ me }: { me: Me }) {
           </>
         )}
       </div>
+      {!empty && !scroll.atBottom && (
+        <button className="jump-latest" type="button" onClick={scroll.toLatest}>
+          <Icon name="down" size={15} />
+          Latest
+        </button>
+      )}
       <div className="composer-stage">
         <form
           ref={composer}
-          className="floating-composer"
+          className={`floating-composer${dropping ? " is-dropping" : ""}${
+            busy ? " is-busy" : ""
+          }`}
           onSubmit={(e) => {
             e.preventDefault();
             void send();
+          }}
+          onDragOver={(e) => {
+            // Only claim the drop when files are actually being dragged: a
+            // hovering text selection should not light up the field.
+            if (!e.dataTransfer.types.includes("Files")) return;
+            e.preventDefault();
+            setDropping(true);
+          }}
+          onDragLeave={(e) => {
+            if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+            setDropping(false);
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDropping(false);
+            void attach(e.dataTransfer.files);
           }}
         >
           <div className="composer-surface">
@@ -615,7 +694,7 @@ function ChatWorkspace({ me }: { me: Me }) {
               Message 9th Protocol
             </label>
             <textarea
-              ref={input}
+              ref={input.ref}
               id="chat-input"
               rows={3}
               value={draft}
@@ -628,6 +707,14 @@ function ChatWorkspace({ me }: { me: Me }) {
                 ) {
                   e.preventDefault();
                   void send();
+                  return;
+                }
+                // Escape rests the composer: it collapses and gives the screen
+                // back, without ever discarding what was typed.
+                if (e.key === "Escape" && draft) {
+                  e.preventDefault();
+                  input.rest();
+                  e.currentTarget.blur();
                 }
               }}
               placeholder="What do you want to build…"
@@ -635,7 +722,10 @@ function ChatWorkspace({ me }: { me: Me }) {
             {files.length > 0 && (
               <div className="attachment-list">
                 {files.map((file, i) => (
-                  <span key={`${file.name}-${i}`}>
+                  <span
+                    key={`${file.name}-${i}`}
+                    style={{ "--step": i } as CSSProperties}
+                  >
                     <Icon name="file" size={13} />
                     {file.name}
                     <button
@@ -650,6 +740,12 @@ function ChatWorkspace({ me }: { me: Me }) {
                   </span>
                 ))}
               </div>
+            )}
+            {dropping && (
+              <span className="drop-hint" aria-hidden="true">
+                <Icon name="attach" size={15} />
+                Drop to attach text or code
+              </span>
             )}
             <div className="composer-tools">
               <div className="tool-chips">
@@ -701,13 +797,17 @@ function ChatWorkspace({ me }: { me: Me }) {
                   onClick={dictation.toggle}
                 />
                 <button
-                  className="send-button"
+                  className={`send-button${busy ? " is-busy" : ""}`}
                   type={busy ? "button" : "submit"}
                   aria-label={busy ? "Stop response" : "Send message"}
                   disabled={!busy && (!draft.trim() || !model)}
                   onClick={busy ? () => controller.current?.abort() : undefined}
                 >
-                  <Icon name={busy ? "stop" : "send"} size={19} />
+                  {/* Keyed on the mode so the two icons crossfade and turn
+                      instead of swapping instantly. */}
+                  <span className="send-icon" key={busy ? "stop" : "send"}>
+                    <Icon name={busy ? "stop" : "send"} size={19} />
+                  </span>
                 </button>
               </div>
             </div>
@@ -744,15 +844,28 @@ function ChatWorkspace({ me }: { me: Me }) {
             </div>
           </div>
         </form>
-        <p className="composer-caption">
-          9th Protocol <span>·</span> Your models. Your possibilities.
+        <p className="composer-caption" aria-live="polite">
+          {dictation.listening ? (
+            <span className="listening-note">
+              Listening<span>·</span>speak naturally, then press the wave again
+            </span>
+          ) : busy ? (
+            <span className="working-note">
+              Working
+              <i className="working-ellipsis">
+                <b />
+                <b />
+                <b />
+              </i>
+            </span>
+          ) : (
+            <>
+              9th Protocol <span>·</span> Your models. Your possibilities.
+            </>
+          )}
         </p>
       </div>
-      {notice && (
-        <div className="toast" role="status">
-          {notice}
-        </div>
-      )}
+      <Toast text={notice} />
       {feature && (
         <FeaturePreview {...feature} onClose={() => setFeature(null)} />
       )}
@@ -876,7 +989,7 @@ function ChatWorkspace({ me }: { me: Me }) {
                   "Help me plan a new feature. Start by asking what I want to build.",
                 );
                 setDialog(null);
-                input.current?.focus();
+                input.ref.current?.focus();
               }}
             >
               <Icon name="brain" />

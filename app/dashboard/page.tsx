@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { Shell } from "@/components/shell";
 import { Icon, type IconName } from "@/components/icon";
-import { AmbientBand } from "@/components/workspace/primitives";
+import { AmbientBand, Segmented } from "@/components/workspace/primitives";
+import { CountUp } from "@/components/workspace/motion";
 import { api, type Me } from "@/lib/api";
 
 interface Tx {
@@ -59,11 +60,12 @@ function Meter({
         <Icon name={icon} size={17} />
       </div>
       <div className="metric-value">
-        {spent.toFixed(1)}
+        <CountUp value={spent} digits={1} />
         <span>/ {cap.toLocaleString()} cr</span>
       </div>
       <p className="metric-note">
-        {Math.max(0, cap - spent).toFixed(1)} credits remaining
+        <CountUp value={Math.max(0, cap - spent)} digits={1} /> credits
+        remaining
       </p>
       <div
         className={`meter${pct > 80 ? " hot" : ""}`}
@@ -103,13 +105,14 @@ function DailyChart({
             role="group"
             aria-label="Daily compute credits, last 30 days"
           >
-            {days.map((day) => (
+            {days.map((day, index) => (
               <div
                 key={day.key}
                 className="chart-bar"
                 tabIndex={0}
                 aria-label={`${day.key}: ${day.credits.toFixed(2)} credits`}
                 data-label={`${day.key}: ${day.credits.toFixed(2)} cr`}
+                style={{ "--step": index } as CSSProperties}
               >
                 <span style={{ height: `${(day.credits / max) * 100}%` }} />
               </div>
@@ -276,18 +279,16 @@ function DashboardBody({ me }: { me: Me }) {
                   : "Your model activity over the last 30 days"}
               </p>
             </div>
-            <div className="segmented" role="group" aria-label="Group usage by">
-              {(["model", "day", "session"] as const).map((group) => (
-                <button
-                  key={group}
-                  className={groupBy === group ? "selected" : ""}
-                  aria-pressed={groupBy === group}
-                  onClick={() => setGroupBy(group)}
-                >
-                  {group}
-                </button>
-              ))}
-            </div>
+            <Segmented
+              label="Group usage by"
+              value={groupBy}
+              options={[
+                { value: "model", label: "model" },
+                { value: "day", label: "day" },
+                { value: "session", label: "session" },
+              ]}
+              onChange={(value) => setGroupBy(value as GroupBy)}
+            />
           </div>
           <div className="card table-card">
             <table>

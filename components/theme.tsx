@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { Icon } from "./icon";
+import { revealThemeChange } from "@/lib/motion";
 
 type Theme = "light" | "dark" | "system";
 const KEY = "9p.theme";
@@ -85,7 +86,16 @@ export function ThemePicker({ expanded = false }: { expanded?: boolean }) {
           aria-pressed={theme === value}
           aria-label={`${value[0].toUpperCase()}${value.slice(1)} theme`}
           title={`${value[0].toUpperCase()}${value.slice(1)} theme`}
-          onClick={() => setTheme(value)}
+          onClick={(event) => {
+            // The new palette grows out of the chip that was pressed, so a
+            // theme change reads as one movement instead of a window flash.
+            const rect = event.currentTarget.getBoundingClientRect();
+            revealThemeChange(
+              rect.left + rect.width / 2,
+              rect.top + rect.height / 2,
+              () => setTheme(value),
+            );
+          }}
         >
           {expanded && (
             <span className={`theme-preview ${value}`}>

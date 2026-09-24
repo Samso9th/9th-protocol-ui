@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Icon, type IconName } from "../icon";
 import { Snippet } from "../shell";
+import { CountUp, StaggerGroup } from "./motion";
 import { Dialog } from "./primitives";
 export interface LibraryEntry {
   name: string;
@@ -57,9 +58,16 @@ export function Library({
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
-        <span className="badge">{filtered.length} tools to explore</span>
+        <span className="badge">
+          <CountUp value={filtered.length} /> tools to explore
+        </span>
       </div>
-      <div className="library-grid">
+      <StaggerGroup
+        className="library-grid"
+        signature={query}
+        distance={10}
+        step={38}
+      >
         {filtered.map((entry) => (
           <button
             className="library-tile"
@@ -77,7 +85,7 @@ export function Library({
             </span>
           </button>
         ))}
-      </div>
+      </StaggerGroup>
       {!filtered.length && (
         <div className="empty-state">
           <Icon name="search" size={26} />

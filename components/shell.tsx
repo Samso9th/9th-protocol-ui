@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, clearTokens, getTokens, type Me } from "@/lib/api";
+import { DUR, animate } from "@/lib/motion";
 import { Icon, type IconName } from "./icon";
 import { ThemePicker } from "./theme";
 import { ActionButton, Dialog } from "./workspace/primitives";
@@ -99,6 +100,7 @@ export function Shell({
   const [copied, setCopied] = useState(false);
   const current = PAGES.find((page) => page.href === pathname);
   const isChat = pathname === "/workspace";
+  const canvas = useRef<HTMLElement>(null);
   const load = useCallback(() => {
     setError(null);
     api<Me>("/me").then(setMe, (e: Error) => setError(e.message));
@@ -112,6 +114,22 @@ export function Shell({
   }, [load, router]);
   useEffect(() => {
     setPanel(null);
+  }, [pathname]);
+  /**
+   * A page change should feel like turning a page, not swapping a panel: the
+   * whole canvas lifts in a few pixels. It runs here rather than in CSS because
+   * the element survives navigation, so a keyframe would never replay.
+   */
+  useEffect(() => {
+    animate(
+      canvas.current,
+      [
+        { opacity: 0, transform: "translateY(6px)" },
+        { opacity: 1, transform: "translateY(0)" },
+      ],
+      { duration: DUR.base },
+    );
+    canvas.current?.scrollTo({ top: 0 });
   }, [pathname]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -184,6 +202,7 @@ export function Shell({
             icon="chat"
             label="New chat"
             className="rail-new"
+            active={isChat}
             onClick={newChat}
           />
           <ActionButton
@@ -286,6 +305,7 @@ export function Shell({
           className={isChat ? "chat-main" : "content"}
           id="main"
           tabIndex={-1}
+          ref={canvas}
         >
           {children(me, load)}
         </main>

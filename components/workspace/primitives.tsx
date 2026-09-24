@@ -2,11 +2,14 @@
 import {
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
+  useState,
   type ButtonHTMLAttributes,
   type ReactNode,
   type CSSProperties,
 } from "react";
+import { DUR, animate } from "@/lib/motion";
 import { Icon, type IconName } from "../icon";
 
 export function ActionButton({
@@ -20,8 +23,25 @@ export function ActionButton({
   label: string;
   active?: boolean;
 }) {
+  const node = useRef<HTMLButtonElement>(null);
+  const shown = useRef(icon);
+  useEffect(() => {
+    // Copy becoming a checkmark is the clearest example: the glyph changes
+    // meaning, so it turns into its replacement instead of cutting.
+    if (shown.current === icon) return;
+    shown.current = icon;
+    animate(
+      node.current?.querySelector("svg"),
+      [
+        { opacity: 0, transform: "rotate(-65deg) scale(0.6)" },
+        { opacity: 1, transform: "rotate(0deg) scale(1)" },
+      ],
+      { duration: DUR.quick },
+    );
+  }, [icon]);
   return (
     <button
+      ref={node}
       type="button"
       aria-label={label}
       aria-pressed={active}
@@ -42,8 +62,26 @@ export function PillButton({
   icon?: IconName;
   active?: boolean;
 }) {
+  const node = useRef<HTMLButtonElement>(null);
+  const was = useRef(active);
+  useEffect(() => {
+    if (was.current === active) return;
+    was.current = active;
+    // A pill that just became active gets a single acknowledging pop.
+    if (active)
+      animate(
+        node.current,
+        [
+          { transform: "scale(1)" },
+          { transform: "scale(1.06)", offset: 0.45 },
+          { transform: "scale(1)" },
+        ],
+        { duration: 280 },
+      );
+  }, [active]);
   return (
     <button
+      ref={node}
       type="button"
       aria-label={typeof children === "string" ? children : undefined}
       title={typeof children === "string" ? children : undefined}
@@ -153,6 +191,72 @@ export function FeaturePreview({
         </button>
       </div>
     </Dialog>
+  );
+}
+
+/**
+ * A segmented control whose selection moves rather than reappears: one pill
+ * travels between cells and swells slightly mid-flight, so the eye can follow
+ * where the choice went.
+ */
+export function Segmented({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: { value: string; label: string; disabled?: boolean }[];
+  onChange: (value: string) => void;
+}) {
+  const group = useRef<HTMLDivElement>(null);
+  const [pill, setPill] = useState<{ x: number; w: number } | null>(null);
+  const [travelling, setTravelling] = useState(false);
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      const selected = group.current?.querySelector<HTMLElement>(
+        "button.selected",
+      );
+      if (!group.current || !selected) return setPill(null);
+      // Offsets are relative to `.segmented` because it is the offset parent.
+      setPill({ x: selected.offsetLeft, w: selected.offsetWidth });
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [value, options.length]);
+
+  useEffect(() => {
+    if (!pill) return;
+    setTravelling(true);
+    const timer = setTimeout(() => setTravelling(false), 340);
+    return () => clearTimeout(timer);
+  }, [pill?.x, pill?.w]);
+
+  return (
+    <div className={`segmented${pill ? " has-pill" : ""}`} role="group" aria-label={label} ref={group}>
+      {pill && (
+        <span
+          aria-hidden="true"
+          className={`segmented-pill${travelling ? " is-travelling" : ""}`}
+          style={{ transform: `translateX(${pill.x}px)`, width: `${pill.w}px` }}
+        />
+      )}
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          disabled={option.disabled}
+          className={value === option.value ? "selected" : ""}
+          aria-pressed={value === option.value}
+          onClick={() => onChange(option.value)}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
   );
 }
 
